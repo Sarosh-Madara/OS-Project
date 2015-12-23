@@ -19,6 +19,7 @@ public class SJF3 {
     public static ArrayList<process> readyQueue;
     public static process current_exe_process;
     public static int count,offset;
+    public static ArrayList<process> completedProcess;
     
     public static void main(String args[]) throws InterruptedException{
         
@@ -32,7 +33,7 @@ public class SJF3 {
         
         mainQueue = new ArrayList<>();
         readyQueue = new ArrayList<>();
-        
+        completedProcess = new ArrayList<>();
         
         for(int i=0; i<noofprocess; i++){
             Scanner scan = new Scanner(System.in);
@@ -63,7 +64,7 @@ public class SJF3 {
         
         
         current_exe_process = mainQueue.get(0);
-        
+        count = 0;
         int length = mainQueue.size();
         
         for(int i=0; i < length; i++){
@@ -73,11 +74,12 @@ public class SJF3 {
             
             if( current_exe_process == null)
                 current_exe_process = readyQueue.get(0);
-            
+                
+            current_exe_process.start = count;
             for(int j=0; j != current_exe_process.burst; j++){
                 System.out.println("currently_exe: "+current_exe_process);
                 readyQueue = iterateOverQueue(mainQueue, j, readyQueue);
-                
+                count++;
                 // increment turnaround time of the current process
                 incrementTurnaroundTime(mainQueue,current_exe_process);
 //                incWaitOfReadyQueue(readyQueue);
@@ -86,6 +88,10 @@ public class SJF3 {
             current_exe_process = null;
             if(readyQueue != null && !readyQueue.isEmpty())
                 current_exe_process = readyQueue.get(0);
+            
+            
+            completedProcess.add(current_exe_process);
+            
             // sort here
             Collections.sort(readyQueue, new ServiceTimeComparer());
         }
@@ -115,7 +121,7 @@ public class SJF3 {
            if( last_index == mainQueue.get(i).arrivalTime && !new_readyQueue.contains(mainQueue.get(i))){
                // last index has to be updated
                new_readyQueue.add(mainQueue.get(i));
-               
+               last_index = i;
                System.out.println("newList: "+new_readyQueue);
                
                mainQueue.get(i).wait++;
