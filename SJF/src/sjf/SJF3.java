@@ -17,9 +17,11 @@ public class SJF3 {
     
     public static ArrayList<process> mainQueue;
     public static ArrayList<process> readyQueue;
-    public static process current_exe_process;
+    public static process running_process;
     public static int count,offset;
-    public static ArrayList<process> completedProcess;
+    public static ArrayList<process> new_readyQueue;
+    public static int last_index = 0;
+    
     
     public static void main(String args[]) throws InterruptedException{
         
@@ -33,7 +35,6 @@ public class SJF3 {
         
         mainQueue = new ArrayList<>();
         readyQueue = new ArrayList<>();
-        completedProcess = new ArrayList<>();
         
         for(int i=0; i<noofprocess; i++){
             Scanner scan = new Scanner(System.in);
@@ -48,101 +49,77 @@ public class SJF3 {
         
         
         // Sorting cirteria on the bases of Arrival time.
-        System.out.println("-----------------------------Before sorting------------------------------");
-        for(int i=0; i<mainQueue.size(); i++){
-            System.out.println(mainQueue.get(i).name+" "+mainQueue.get(i).arrivalTime+" "+mainQueue.get(i).burst);
-        }
+//        System.out.println("-----------------------------Before sorting------------------------------");
+//        for(int i=0; i<mainQueue.size(); i++){
+//            System.out.println(mainQueue.get(i).name+" "+mainQueue.get(i).arrivalTime+" "+mainQueue.get(i).burst);
+//        }
+//        
+//        Collections.sort(mainQueue, new ArrivalTimeComparer());
+//        
+//        
+//        System.out.println("--------------------------After sorting--------------------------");
+//        for(int i=0; i<mainQueue.size(); i++){
+//            System.out.println(mainQueue.get(i).name+" "+mainQueue.get(i).arrivalTime+" "+mainQueue.get(i).burst);
+//        }
         
-        Collections.sort(mainQueue, new ArrivalTimeComparer());
+        System.out.println("\n\n");
         
-        
-        System.out.println("--------------------------After sorting--------------------------");
-        for(int i=0; i<mainQueue.size(); i++){
-            System.out.println(mainQueue.get(i).name+" "+mainQueue.get(i).arrivalTime+" "+mainQueue.get(i).burst);
-        }
-        
-        
-        
-        current_exe_process = mainQueue.get(0);
         count = 0;
-        int length = mainQueue.size();
+        offset = 0;
+        int totalBurst = 0;
         
-        for(int i=0; i < length; i++){
+        for(int i=0; i < mainQueue.size(); i++){
             
-            if(mainQueue.contains(current_exe_process))
-                mainQueue.remove(current_exe_process);
-            
-            if( current_exe_process == null)
-                current_exe_process = readyQueue.get(0);
-                
-            current_exe_process.start = count;
-            for(int j=0; j != current_exe_process.burst; j++){
-                System.out.println("currently_exe: "+current_exe_process);
-                readyQueue = iterateOverQueue(mainQueue, j, readyQueue);
-                count++;
-                // increment turnaround time of the current process
-                incrementTurnaroundTime(mainQueue,current_exe_process);
-//                incWaitOfReadyQueue(readyQueue);
+            if( running_process == null && !readyQueue.isEmpty()){
+                running_process = readyQueue.get(0);
+                readyQueue.remove(0);
             }
+            else
+                running_process = mainQueue.get(0);
             
-            current_exe_process = null;
-            if(readyQueue != null && !readyQueue.isEmpty())
-                current_exe_process = readyQueue.get(0);
+            running_process.start = count;          // may be offset or either both working exactly same
+            
+            System.out.println("Process: "+running_process.name+" currently executing");
+            
+            for(int service = 0; service != running_process.burst; service++){
+                
+                count++;
+                readyQueue = iterateOverMainQueue();
+                incWaitOfReadyQueue(readyQueue);
+            }
+            offset += running_process.burst;
+            
+            totalBurst += running_process.burst;
+            running_process.wait = running_process.start - running_process.arrivalTime;
             
             
-            completedProcess.add(current_exe_process);
+            System.out.println("Process "+running_process.name+" finshes Execution"+"\nTurnaround Time: "+(totalBurst+running_process.wait));
+            System.out.println("Waiting Time: " + running_process.wait +"\n\n");
             
-            // sort here
+            running_process = null;
             Collections.sort(readyQueue, new ServiceTimeComparer());
-        }
-        
-        for(process p : readyQueue)
-            System.out.println("Process: "+p.name+" wait: "+p.wait+" turnaround: "+p.turnAround);
-        
-        for(process p: mainQueue){
-            System.out.println("printing main Process: "+p.name+" wait: "+p.wait+" turnaround: "+p.turnAround);
-        }
-        
-        System.out.println("mainQ: "+mainQueue);
-        System.out.println("readyQ: "+readyQueue);
+        }  
     }
     
-    public static ArrayList<process> new_readyQueue;
-    public static int last_index = 0;
-    private static ArrayList<process> iterateOverQueue(ArrayList<process> mainQueue, int ARRIVAL_AT,ArrayList<process> old_readyQueue) {
+   
+    private static ArrayList<process> iterateOverMainQueue( ) {
         
        new_readyQueue = new ArrayList<>();
        
-       if( old_readyQueue != null && !old_readyQueue.isEmpty())
-            new_readyQueue.addAll(old_readyQueue);
+       if( readyQueue != null && !readyQueue.isEmpty())
+            new_readyQueue.addAll(readyQueue);
+       
+       last_index = offset;
        
        for(int i = 0;  i < mainQueue.size();  i++){
            
-           if( last_index == mainQueue.get(i).arrivalTime && !new_readyQueue.contains(mainQueue.get(i))){
-               // last index has to be updated
+           if( last_index <= mainQueue.get(i).arrivalTime && mainQueue.get(i).arrivalTime <= running_process.burst + offset 
+                   && !new_readyQueue.contains(mainQueue.get(i)) && mainQueue.get(i) != running_process){
+               
                new_readyQueue.add(mainQueue.get(i));
-               last_index = i;
-               System.out.println("newList: "+new_readyQueue);
-               
-               mainQueue.get(i).wait++;
-               
-           }else if(new_readyQueue.contains(mainQueue.get(i))){
-               new_readyQueue.get(i).wait++;
-               System.out.println("process already in readyQueue"+mainQueue.get(i));
            }
-           
        }
-       
        return new_readyQueue;
-    }
-
-    static int index;
-    
-    private static void incrementTurnaroundTime(ArrayList<process> mainQueue, process current_exe_process) {
-        if(mainQueue.contains(current_exe_process)){
-            index = mainQueue.indexOf(current_exe_process);
-            mainQueue.get(index).turnAround++;
-        }
     }
 
     private static void incWaitOfReadyQueue(ArrayList<process> readyQueue) {
