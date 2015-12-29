@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package hrrn;
 
 import java.util.ArrayList;
@@ -10,21 +5,28 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Scanner;
 
-/**
- *
- * @author Sarosh Madara
- */
 public class HRRN {
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String[] args) {
-        System.out.println("******** Shortest Process Next Scheduling Algorithm ********\n\n");
+    public static ArrayList<process> mainQueue;
+    public static ArrayList<process> readyQueue;
+    public static process running_process;
+    public static int count,offset;
+    public static int last_index = 0;
+    
+    
+    public static void main(String args[]) throws InterruptedException{
+        
+        System.out.println("******** Highest Response Ratio Next Scheduling Algorithm ********\n\n");
         System.out.print("Enter # of Processes: ");
+        
+        
         Scanner no=new Scanner(System.in);
-        int noofprocess=no.nextInt();
-        ArrayList<process> processlist = new ArrayList<>();
+        
+        int noofprocess = no.nextInt();
+        
+        mainQueue = new ArrayList<>();
+        readyQueue = new ArrayList<>();
+        
         for(int i=0; i<noofprocess; i++){
             Scanner scan = new Scanner(System.in);
             process p = new process();
@@ -33,67 +35,142 @@ public class HRRN {
             p.arrivalTime = scan.nextInt();
             System.out.print("Enter Service Time of Process "+p.name+" : ");
             p.burst = scan.nextInt();
-            processlist.add(p);
+            mainQueue.add(p);    
+        }
+
+        
+        Collections.sort(mainQueue, new ArrivalTimeComparer());
+
+        
+        System.out.println("\n\n");
+        
+        count = 0;
+        offset = 0;
+        
+        for(int i=0; i < mainQueue.size(); i++){
             
-        }
+            if( running_process == null && !readyQueue.isEmpty()){
+                running_process = readyQueue.get(0);
+                readyQueue.remove(0);
+            }
+            else
+                running_process = mainQueue.get(0);
+            
+            running_process.start = count;         
+            
+            System.out.println("Process: "+running_process.name+" currently executing");
+            
+            for(int service = 0; service != running_process.burst; service++){
+                count++;
+                iterateOverMainQueue();
+            }
+            
+            offset += running_process.burst;
+            
+            settingWaitOfReadyQueue();             
+            
+            running_process.wait = running_process.start - running_process.arrivalTime;
+            
+            System.out.println("Process "+running_process.name+" finshes Execution"+"\nTurnaround Time: "+(running_process.burst + running_process.wait));
+            System.out.println("Waiting Time: " + running_process.wait +"\n\n");
+            
+            running_process = null;
+           
+            CalculatingResponseRatio();
+           if (i==mainQueue.size()-1)
+           {
+               System.out.println("=========================================================");
+               break;
+           }
+           
+            System.out.println("Process Sorting on behalf of Response Ratio");
+            for (process p : readyQueue) {
+                System.out.println(p);
+            }
+            
+            System.out.println("=========================================================");
+            
+            SortingRR();
+        }  
+    }
+    
+    private static void iterateOverMainQueue( ) {
         
-        System.out.println("-----------------------------Before sorting------------------------------");
-        for(int i=0; i<processlist.size(); i++){
-            System.out.println(processlist.get(i).name+" "+processlist.get(i).arrivalTime+" "+processlist.get(i).burst);
-        }
-        
-        Collections.sort(processlist,new ArrivalTimeComparer());
-        
-        
-        System.out.println("--------------------------After sorting--------------------------");
-        for(int i=0; i<processlist.size(); i++){
-            System.out.println(processlist.get(i));
+       last_index = offset;
+       
+       for(int i = 0;  i < mainQueue.size();  i++){
+           
+           if( last_index <= mainQueue.get(i).arrivalTime && mainQueue.get(i).arrivalTime <= running_process.burst + offset 
+                   && !readyQueue.contains(mainQueue.get(i)) && mainQueue.get(i) != running_process){
+               readyQueue.add(mainQueue.get(i));
+           }
+       }
+ 
+    }
+    private static void CalculatingResponseRatio()
+    {
+        for (int i=0;i<readyQueue.size();i++)
+        {
+             readyQueue.get(i).ResponseRatio = ( readyQueue.get( i ).wait + readyQueue.get( i ).burst) / readyQueue.get( i ).burst;
         }
     }
     
-}
-
-
-class ServiceTimeComparer implements Comparator<process>{
-
-    @Override
-    public int compare(process o1, process o2) {
-        return o1.burst - o2.burst;
-    }
-}
-
-class ArrivalTimeComparer implements Comparator<process>{
-
-    @Override
-    public int compare(process o1, process o2) {
-        return o1.arrivalTime - o2.arrivalTime;
-    }    
-}
-
-class process{
-    
-    public process(String name, int arrivalTime, int brust, int priority)
+    private static void SortingRR()
     {
-        this.name = name;
-        this.arrivalTime = arrivalTime;
-        this.burst = brust;
-        this.priority = priority;
-    }
-    public process()
-    {
+        Object[] processes =  readyQueue.toArray();
 
-    }
-    public String name;
-    public int arrivalTime;
-    public int burst;
-    public int priority;
-    public int wait;
-    public int end;
-    public int start;
-    public int turnAround;
+        process temp;
+        for (int i=0;i<readyQueue.size()-1;i++)
+        {
+            for ( int cal = i + 1; cal < readyQueue.size(); cal++ )
+            {
+                if (readyQueue.get(cal).ResponseRatio>readyQueue.get(i).ResponseRatio)
+                {
+                    temp = (process) processes[i];
+                    processes[i] = processes[cal];
+                    processes[cal] = temp;
 
-    @Override
-    public String toString() {
-        return name+" "+ arrivalTime+" "+ burst;
+                }
+            }
+        }
+
+        readyQueue = new ArrayList<>();
+       for (Object process : processes) {
+           readyQueue.add((process) process);
+       }
+    }
+
+    private static void settingWaitOfReadyQueue() {
+        for (process p : readyQueue)
+            p.wait = count - p.arrivalTime;
+    }
+
+    static class ArrivalTimeComparer implements Comparator<process>{
+
+        @Override
+        public int compare(process o1, process o2) {
+            return o1.arrivalTime - o2.arrivalTime;
+        }    
+    }
+
+    static class process{
+
+
+        public process()
+        {
+
+        }
+        public String name;
+        public int arrivalTime;
+        public double burst;
+        public double wait;
+        public int start;
+        public int turnAround;
+        public double ResponseRatio;
+
+        @Override
+        public String toString() {
+            return "Process" + name+"   Arrival: "+ arrivalTime+" Burst: "+ burst+"   ResponseRatio " + ResponseRatio + "   Wait: " + wait;
+        }
     }
 }

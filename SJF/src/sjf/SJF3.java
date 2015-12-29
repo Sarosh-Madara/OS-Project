@@ -7,6 +7,7 @@ package sjf;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Scanner;
 
 /**
@@ -25,7 +26,7 @@ public class SJF3 {
     
     public static void main(String args[]) throws InterruptedException{
         
-        System.out.println("******** Shortest Process Next Scheduling Algorithm 3 ********\n\n");
+        System.out.println("******** Shortest Process Next Scheduling Algorithm ********\n\n");
         System.out.print("Enter # of Processes: ");
         
         
@@ -46,21 +47,10 @@ public class SJF3 {
             p.burst = scan.nextInt();
             mainQueue.add(p);    
         }
-        
-        
-        // Sorting cirteria on the bases of Arrival time.
-//        System.out.println("-----------------------------Before sorting------------------------------");
-//        for(int i=0; i<mainQueue.size(); i++){
-//            System.out.println(mainQueue.get(i).name+" "+mainQueue.get(i).arrivalTime+" "+mainQueue.get(i).burst);
-//        }
+
 //        
-//        Collections.sort(mainQueue, new ArrivalTimeComparer());
-//        
-//        
-//        System.out.println("--------------------------After sorting--------------------------");
-//        for(int i=0; i<mainQueue.size(); i++){
-//            System.out.println(mainQueue.get(i).name+" "+mainQueue.get(i).arrivalTime+" "+mainQueue.get(i).burst);
-//        }
+        Collections.sort(mainQueue, new ArrivalTimeComparer());
+
         
         System.out.println("\n\n");
         
@@ -77,7 +67,7 @@ public class SJF3 {
             else
                 running_process = mainQueue.get(0);
             
-            running_process.start = count;          // may be offset or either both working exactly same
+            running_process.start = count;
             
             System.out.println("Process: "+running_process.name+" currently executing");
             
@@ -85,15 +75,15 @@ public class SJF3 {
                 
                 count++;
                 readyQueue = iterateOverMainQueue();
-                incWaitOfReadyQueue(readyQueue);
             }
             offset += running_process.burst;
             
             totalBurst += running_process.burst;
+            
             running_process.wait = running_process.start - running_process.arrivalTime;
             
-            
-            System.out.println("Process "+running_process.name+" finshes Execution"+"\nTurnaround Time: "+(totalBurst+running_process.wait));
+            incWaitOfReadyQueue();
+            System.out.println("Process "+running_process.name+" finshes Execution"+"\nTurnaround Time: "+(running_process.burst + running_process.wait));
             System.out.println("Waiting Time: " + running_process.wait +"\n\n");
             
             running_process = null;
@@ -122,10 +112,9 @@ public class SJF3 {
        return new_readyQueue;
     }
 
-    private static void incWaitOfReadyQueue(ArrayList<process> readyQueue) {
-        for (process p : readyQueue) {
-            p.wait++;
-        }
+    private static void incWaitOfReadyQueue() {
+        for (process p : readyQueue)
+            p.wait = count - p.arrivalTime;
     }
 }
 
@@ -133,3 +122,48 @@ public class SJF3 {
 
 
 
+class ServiceTimeComparer implements Comparator<process>{
+
+    @Override
+    public int compare(process o1, process o2) {
+        return o1.burst - o2.burst;
+    }
+}
+
+class ArrivalTimeComparer implements Comparator<process>{
+
+    @Override
+    public int compare(process o1, process o2) {
+        return o1.arrivalTime - o2.arrivalTime;
+    }    
+}
+
+
+
+class process{
+    
+    public process(String name, int arrivalTime, int brust, int priority)
+    {
+        this.name = name;
+        this.arrivalTime = arrivalTime;
+        this.burst = brust;
+        this.priority = priority;
+    }
+    public process()
+    {
+
+    }
+    public String name;
+    public int arrivalTime;
+    public int burst;
+    public int priority;
+    public int wait;
+    public int end;
+    public int start;
+    public int turnAround;
+
+    @Override
+    public String toString() {
+        return name+" "+ arrivalTime+" "+ burst;
+    }
+}

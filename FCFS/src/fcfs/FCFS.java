@@ -35,7 +35,6 @@ public class FCFS {
             System.out.print("Enter Service Time of Process "+p.name+" : ");
             p.burst = scan.nextInt();
             processlist.add(p);
-            
         }
         
         System.err.println("\n-----------------------------Before sorting------------------------------");
